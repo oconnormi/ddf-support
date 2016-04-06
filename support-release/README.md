@@ -5,6 +5,24 @@ Maven Release Helper script
 
 This script is to help automate the process of performing a maven release against a git repo without resorting to the maven-release-plugin.
 
+## Building
+This project requires gradle
+
+### Full build
+```bash
+gradle build
+```
+
+distribution files will be under `build/distributions`
+
+### Test build
+to run the build and auto-expand the distribution script run:
+```bash
+gradle installDist
+```
+
+installed distribution will be under `build/install`
+
 ## Features
 
 * supports releasing on a forked repo, while still using the upstream changes
@@ -58,7 +76,7 @@ I Release You!
                                          process
  -t,--test                               Run in dry run mode
 ```
- 
+
 ## Config file
 
 ```yaml
