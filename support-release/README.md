@@ -67,6 +67,14 @@ I Release You!
  -n,--next-version <nextVersion>         Next version after the release,
                                          default: auto-increment
  -p,--push                               Push commits and tags
+    --post-props <postProps>             comma separated list of
+                                         post-release property updates,
+                                         specify in the form
+                                         "propertyName=propertyValue"
+    --pre-props <preProps>               comma separated list of
+                                         pre-release property updates,
+                                         specify in the form
+                                         "propertyName=propertyValue"
  -q,--quick-build                        Executes a quick build instead of
                                          a full build (Not Recommended!!!)
  -r,--ref <ref>                          Git ref to release from, can be
@@ -75,6 +83,7 @@ I Release You!
                                          initial checkout for the release
                                          process
  -t,--test                               Run in dry run mode
+ -v,--release-version <releaseVersion>   Target version for the release
 ```
 
 ## Config file
@@ -92,6 +101,12 @@ I Release You!
    maven:
      repo: "releases:default:http://nexus.fake.site/nexus/content/repositories/releases/"
      quickbuild: true
+     properties:
+       pre-release:
+         foo.property: "barValue"
+         bar.property: "fooValue"
+       post-release:
+         this: "that"
    settings:
      dryRun: true
      force: false

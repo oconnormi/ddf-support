@@ -14,7 +14,8 @@ class Config {
     String releaseVersion
     String nextVersion
     String mavenRepo
-    String nextSnapshotsFilter
+    Map preProps
+    Map postProps
     String releaseName
     boolean quickBuild
     boolean gitPush
@@ -22,49 +23,51 @@ class Config {
     boolean force
 
     public loadConfig = { ->
-        def configLoader = load(configFile)
+        def project = load(configFile).project
 
-        for (node in configLoader) {
-            println "Node: ${node.value}"
-            def project = node.value
-            def git = project.git
-            def source = git.source
-            def destination = git.destination
-            def maven = project.maven
-            def settings = project.settings
-            def versions = project.versions
-            sourceRemote = source.remote
-            destRemote = destination.remote
-            ref = source.ref
-            destBranch = destination.branch
-            releaseVersion = versions.release
-            nextVersion = versions.development
-            mavenRepo = maven.repo
-            nextSnapshotsFilter = maven.snapshotfilter
-            quickBuild = maven.quickbuild
-            gitPush = destination.push
-            dryRun = settings.dryRun
-            force = settings.force
-        }
+        // Git settings
+        sourceRemote = project.git.source.remote
+        ref = project.git.source.ref
+        destRemote = project.git.destination.remote
+        destBranch = project.git.destination.branch
+        gitPush = project.git.destination.push
+
+        // Maven settings
+        mavenRepo = project.maven.repo
+        quickBuild = project.maven.quickbuild
+        preProps = project.maven.properties."pre-release"
+        postProps = project.maven.properties."post-release"
+
+        // General settings
+        dryRun = project.settings.dryRun
+        force = project.settings.force
+
+        // versions
+        releaseVersion = project.versions.release
+        nextVersion = project.versions.development
     }
 
     public printConfig = { ->
         println "============== RELEASE PARAMETERS =============="
+        println "____________ GENERAL ____________"
         println "Project Directory: ${projectDir}"
         println "Project Name: ${projectName}"
         println "Config File: ${configFile}"
+        println "Dry Run: ${dryRun}"
+        println "______________ GIT ______________"
         println "Source git Remote: ${sourceRemote}"
         println "Source git Ref: ${ref}"
         println "Destination git Remote: ${destRemote}"
         println "Destination git Branch: ${destBranch}"
+        println "Push Git tags/commits: ${gitPush}"
+        println "_____________ MAVEN _____________"
         println "Source Version: ${startVersion}"
         println "Release Version: ${releaseVersion}"
         println "Next Development Version: ${nextVersion}"
-        println "Snapshot Update Filter: ${nextSnapshotsFilter}"
+        println "Pre-Release property updates: ${preProps}"
+        println "Post-Release property updates: ${postProps}"
         println "Maven Release Repo: ${mavenRepo}"
         println "Quick Build: ${quickBuild}"
-        println "Push Git tags/commits: ${gitPush}"
-        println "Dry Run: ${dryRun}"
         println "============ END RELEASE PARAMETERS ============"
     }
 }

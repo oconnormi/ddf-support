@@ -73,30 +73,33 @@ def prepareRelease(Config config) {
     String checkoutCommand = "${gitCommand} checkout ${config.ref}"
     String setReleaseVersionCommand = "${mavenCommand} versions:set -DnewVersion=${config.releaseVersion}"
     //TODO: check for alternatives to use-release (look at maven enforcer)
-    String updateSnapshotsCommand = "${mavenCommand} versions:use-releases -DincludesList=${config.nextSnapshotsFilter}"
+    // String updateSnapshotsCommand = "${mavenCommand} versions:use-releases -DincludesList=${config.nextSnapshotsFilter}"
     String mavenCommitVersionCommand = "${mavenCommand} versions:commit"
     String gitAddCommand = "${gitCommand} add ."
     String gitCommitReleaseCommand = "${gitCommand} commit -m \"[libero] prepare release ${config.releaseName}\""
     String gitTagCommand = "${gitCommand} tag ${config.releaseName}"
     String setDevVersionCommand = "${mavenCommand} versions:set -DnewVersion=${config.nextVersion}"
-    String nextSnapshotsCommand = "${mavenCommand} versions:use-next-snapshots -DincludesList=${config.nextSnapshotsFilter}"
+    // String nextSnapshotsCommand = "${mavenCommand} versions:use-next-snapshots -DincludesList=${config.nextSnapshotsFilter}"
     String gitCommitDevCommand = "${gitCommand} commit -m \"[libero] prepare for next development iteration\""
 
 
     executeCommand(checkoutCommand, config.projectDir)
     executeCommand(setReleaseVersionCommand, config.projectDir)
-    if (config.nextSnapshotsFilter) {
-        executeCommand(updateSnapshotsCommand, config.projectDir)
-    }
     executeCommand(mavenCommitVersionCommand, config.projectDir)
+
+    // Pre-Release property updates
+    config.preProps.each{ k, v ->
+      executeCommand("sed -i '' \"s|<${k}>[^<>]*</${k}>|<${k}>${v}</${k}>|g\" pom.xml", config.projectDir)
+    }
     executeCommand(gitAddCommand, config.projectDir)
     executeCommand(gitCommitReleaseCommand, config.projectDir)
     executeCommand(gitTagCommand, config.projectDir)
     executeCommand(setDevVersionCommand, config.projectDir)
-    if (config.nextSnapshotsFilter) {
-        executeCommand(nextSnapshotsCommand, config.projectDir)
-    }
     executeCommand(mavenCommitVersionCommand, config.projectDir)
+    // Post-Release property updates
+    config.postProps.each{ k, v ->
+      executeCommand("sed -i '' \"s|<${k}>[^<>]*</${k}>|<${k}>${v}</${k}>|g\" pom.xml", config.projectDir)
+    }
     executeCommand(gitAddCommand, config.projectDir)
     executeCommand(gitCommitDevCommand, config.projectDir)
 
@@ -112,8 +115,8 @@ def runBuild(Config config) {
     String gitPushCommand = "${gitCommand} push ${config.destRemote}"
     String gitMasterCommand = "${gitCommand} checkout master"
     String mavenCommand = "mvn -f ${config.projectDir + "/pom.xml"}"
-    String quickBuildParams = "-T2C -Dfindbugs.skip=true -DskipTests=true -Dpmd.skip=true -Djacoco.skip=true -DskipTestScope=true -DskipProvidedScope=true -DskipRuntimeScope=true"
-    String deployCommand = "${mavenCommand} ${quickBuildParams} deploy"
+    String quickBuildParams = "-Dfindbugs.skip=true -DskipTests=true -Dpmd.skip=true -Djacoco.skip=true -DskipTestScope=true -DskipProvidedScope=true -DskipRuntimeScope=true"
+    String deployCommand = "${mavenCommand} ${quickBuildParams} -T2C deploy"
     String buildCommand
 
     // Check out the git tag
@@ -127,13 +130,15 @@ def runBuild(Config config) {
     }
     executeCommand(buildCommand, config.projectDir)
 
-//    if (!config.dryRun) {
-//        if (config.mavenRepo) {
-//            deployCommand = "${deployCommand} -P\\!documentation -DaltDeploymentRepository=${config.mavenRepo}"
-//        }
-//        executeCommand(deployCommand, config.projectDir)
-//        executeCommand(gitPushCommand, config.projectDir)
-//    }
+   if (!config.dryRun) {
+       if (config.mavenRepo) {
+           deployCommand = "${deployCommand} -P\\!documentation -DaltDeploymentRepository=${config.mavenRepo}"
+       }
+       executeCommand(deployCommand, config.projectDir)
+       if (config.push) {
+         executeCommand(gitPushCommand, config.projectDir)
+       }
+   }
 
     // TODO: change to checkout original branch
     executeCommand(gitMasterCommand, config.projectDir)
@@ -176,6 +181,18 @@ def libero(Config config) {
     }
 }
 
+def stringToMap(data) {
+  if (data) {
+    data.split(',').inject([:]) { map, token ->
+      token.split('=').with { map[it[0]] = it[1]}
+      map
+    }
+  }
+  else {
+    null
+  }
+}
+
 def run(args) {
     def cli = new CliBuilder(usage: 'libero -[fhpt] [src]', header: 'I Release You!')
 
@@ -191,8 +208,9 @@ def run(args) {
         s longOpt: 'source-remote', args: 1, argName: 'sourceRepo', 'Git remote repo to use for the initial checkout for the release process'
         v longOpt: 'release-version', args: 1, argName: 'releaseVersion', 'Target version for the release'
         n longOpt: 'next-version', args: 1, argName: 'nextVersion', 'Next version after the release, default: auto-increment'
-        u longOpt: 'update-list', args: 1, argName: 'updateList', 'Include list for updating dependencies to next snapshot'
         b longOpt: 'dest-branch', args: 1, argName: 'destBranch', 'Branch to push to on the destination remote'
+        _ longOpt: 'pre-props', args: 1, argName: 'preProps', 'comma separated list of pre-release property updates, specify in the form "propertyName=propertyValue"'
+        _ longOpt: 'post-props', args: 1, argName: 'postProps', 'comma separated list of post-release property updates, specify in the form "propertyName=propertyValue"'
 
         h longOpt: 'help', 'Show usage information'
         p longOpt: 'push', 'Push commits and tags'
@@ -245,8 +263,8 @@ def run(args) {
     config.ref = options.r ?: config.ref ?: "refs/remotes/${config.sourceRemote}/master"
     config.destBranch = options.b ?: config.destBranch ?: "master"
     config.mavenRepo = options.m ?: config.mavenRepo ?: null
-    // TODO: add notes about filter format
-    config.nextSnapshotsFilter = options.u ?: config.nextSnapshotsFilter ?: null
+    config.preProps = stringToMap(options."pre-props") ?: config.preProps ?: null
+    config.postProps = stringToMap(options."post-props") ?: config.postProps ?: null
     config.startVersion = readStartVersion(config.projectDir)
     config.releaseVersion = options.v ?: config.releaseVersion ?: createReleaseVersion(config.startVersion)
     config.nextVersion = options.n ?: config.nextVersion ?: incrementVersion(config.releaseVersion)
