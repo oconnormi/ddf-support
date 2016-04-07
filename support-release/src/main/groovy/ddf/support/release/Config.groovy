@@ -35,8 +35,10 @@ class Config {
         // Maven settings
         mavenRepo = project.maven.repo
         quickBuild = project.maven.quickbuild
-        preProps = project.maven.properties."pre-release"
-        postProps = project.maven.properties."post-release"
+        if (project.maven.containsKey("properties")) {
+          preProps = project.maven.properties."pre-release"
+          postProps = project.maven.properties."post-release"
+        }
 
         // General settings
         dryRun = project.settings.dryRun
