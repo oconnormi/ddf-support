@@ -132,7 +132,7 @@ def runBuild(Config config) {
 
    if (!config.dryRun) {
        if (config.mavenRepo) {
-           deployCommand = "${deployCommand} -P\\!documentation -DaltDeploymentRepository=${config.mavenRepo}"
+           deployCommand = "${deployCommand} -DaltDeploymentRepository=${config.mavenRepo}"
        }
        executeCommand(deployCommand, config.projectDir)
        if (config.push) {
