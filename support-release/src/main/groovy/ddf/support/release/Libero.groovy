@@ -116,7 +116,7 @@ def runBuild(Config config) {
     String gitMasterCommand = "${gitCommand} checkout master"
     String mavenCommand = "mvn -f ${config.projectDir + "/pom.xml"}"
     String quickBuildParams = "-Dfindbugs.skip=true -DskipTests=true -Dpmd.skip=true -Djacoco.skip=true -DskipTestScope=true -DskipProvidedScope=true -DskipRuntimeScope=true"
-    String deployCommand = "${mavenCommand} ${quickBuildParams} -T2C deploy"
+    String deployCommand = "${mavenCommand} ${quickBuildParams} deploy"
     String buildCommand
 
     // Check out the git tag
